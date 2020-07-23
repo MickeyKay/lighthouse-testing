@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": ". ./scripts/test.sh",
-    "run-lighthouse": "lighthouse-batch -f sites.txt --html -p '--config-path=./lighthouse-config.js --view'"
+    "run-lighthouse": "lighthouse-batch -f sites.txt --html -p '--config-path=./lighthouse-config.js'"
   },
   "author": "Mickey Kay <mickeyskay@gmail.com> (http://mickeykaycreative.com/)",
   "license": "ISC",
