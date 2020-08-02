@@ -244,8 +244,8 @@ const runTests = () => {
 	}
 }
 
-// setup();
-// runTests();
+setup();
+runTests();
 generateSummaries();
 
 // cleanup();
