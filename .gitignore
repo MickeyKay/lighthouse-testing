@@ -1,5 +1,7 @@
-#Lighthouse
+# Lighthouse
 report/
+reports/
+sites.txt
 
 # Logs
 logs

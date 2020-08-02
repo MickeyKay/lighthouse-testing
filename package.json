@@ -1,15 +1,19 @@
 {
   "name": "lighthouse-testing",
+  "type": "module",
   "version": "1.0.0",
   "description": "A light package for testing performance",
   "main": "index.js",
   "scripts": {
-    "test": ". ./scripts/test.sh",
+    "test": "node ./scripts/test.js",
     "run-lighthouse": "lighthouse-batch -f sites.txt --html -p '--config-path=./lighthouse-config.js'"
   },
   "author": "Mickey Kay <mickeyskay@gmail.com> (http://mickeykaycreative.com/)",
   "license": "ISC",
   "dependencies": {
-    "lighthouse-batch": "^6.0.0"
+    "fs": "0.0.1-security",
+    "fs-extra": "^9.0.1",
+    "lighthouse-batch": "^6.0.0",
+    "underscore": "^1.10.2"
   }
 }
