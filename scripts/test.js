@@ -3,11 +3,30 @@
 import fs from 'fs-extra';
 import lighthouseBatch from 'lighthouse-batch';
 
-import config from '../config.js';
+import customConfig from '../config.js';
 
 const SITES_FILE = 'sites.txt';
 const REPORTS_DIR = 'reports';
 const BASELINE_LABEL = 'Baseline';
+
+const CONFIG_DEFAULTS = {
+	runs: 3,
+	keyAudits: [
+		'largest-contentful-paint',
+		'total-blocking-time',
+		'speed-index',
+		'interactive',
+		'first-contentful-paint',
+	],
+	assetTests: [
+		'individual',
+	],
+};
+
+const config = {
+  ...customConfig,
+  ...CONFIG_DEFAULTS,
+};
 
 const setup = () => {
 	fs.removeSync(REPORTS_DIR);
@@ -39,10 +58,11 @@ const runLighthouseBatch = ({
 }
 
 const generateSummaries = () => {
-	fs.readdirSync(REPORTS_DIR, { withFileTypes: true }).filter(dirent => dirent.isDirectory()).map(reportDir => generateSummariesForTestBatch(`${REPORTS_DIR}/${reportDir.name}`));
+	fs.readdirSync(REPORTS_DIR, { withFileTypes: true }).filter(dirent => dirent.isDirectory()).map(reportDir => generateSummariesForTestBatch(reportDir.name));
 }
 
-const generateSummariesForTestBatch = (parentDirectory) => {
+const generateSummariesForTestBatch = (reportDir) => {
+  const parentDirectory = `${REPORTS_DIR}/${reportDir}`;
 	const directories = fs.readdirSync(parentDirectory, { withFileTypes: true }).filter(dirent => dirent.isDirectory());
 
 	const customSummaries = {};
@@ -73,21 +93,23 @@ const generateSummariesForTestBatch = (parentDirectory) => {
 	});
 
 	// Assemble table header html.
-	let headerHtml = '<tr><th>Test</th>';
+	let headerHtml = '<tr><th scope="col">Test</th>';
 	config.keyAudits.forEach(auditId => {
-		headerHtml += `<th>${auditId}</th>`;
+		headerHtml += `<th scope="col">${auditId}</th>`;
 	});
 
 	headerHtml += '</tr>';
 
 	// Assemble table rows.
-	const getRowHtml = (summaryId) => {
-		let rowHtml = `<td>${summaryId}</td>`;
+	const getRowHtml = (summaryId, counter = 0) => {
+		let rowHtml = `<th scope="row">${counter}. ${summaryId}</th>`;
+
 		config.keyAudits.forEach(auditId => {
 			const baselineValue = customSummaries[BASELINE_LABEL][auditId].toFixed(0);
 			const testValue = customSummaries[summaryId][auditId].toFixed(0);
 
-			const delta = ((testValue - baselineValue) / baselineValue * 100).toFixed(0);
+			const rawDelta = ((testValue - baselineValue) / baselineValue * 100).toFixed(0);
+      const delta = isNaN(rawDelta) ? 0 : rawDelta;
 
 			let deltaClass = '';
 
@@ -106,11 +128,7 @@ const generateSummariesForTestBatch = (parentDirectory) => {
 			}
 
 
-			if (summaryId === BASELINE_LABEL) {
-				rowHtml += `<td><b>${testValue}</b></td>`;
-			} else {
-				rowHtml += `<td class="${deltaClass}"><b>${testValue}</b> (${delta > 0 ? '+' : ''}${delta}%)</td>`;
-			}
+			rowHtml += `<td class="${deltaClass}"><b>${testValue}</b> ${summaryId === BASELINE_LABEL ? '' : '(' + (delta > 0 ? '+' : '') + delta + '%)'}</td>`;
 		});
 
 		return `<tr>${rowHtml}</td>`;
@@ -120,78 +138,99 @@ const generateSummariesForTestBatch = (parentDirectory) => {
 
 	rowsHtml += getRowHtml(BASELINE_LABEL);
 
+  let counter = 1;
 	for (const summaryId in customSummaries) {
 		if (summaryId === BASELINE_LABEL) {
 			continue;
 		}
 
-		rowsHtml += getRowHtml(summaryId);
+		rowsHtml += getRowHtml(summaryId, counter++);
 	}
+
+  const title = `Summary: ${reportDir.charAt(0).toUpperCase() + reportDir.slice(1)}`;
 
 	const html = `
 		<!doctype html>
 		<html lang="en">
 			<head>
-			  <meta charset="utf-8">
-			  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
-			  <style>
-				table {
-				  border-collapse: collapse;
-				  white-space: nowrap;
-				}
+			  <head>
+          <!-- Required meta tags -->
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-				table, th, td {
-				  border: 1px solid black;
-				}
+          <!-- Bootstrap CSS -->
+          <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 
-				th, td{
-					padding: 5px;
-				}
+          <title>${title}</title>
+  			  <style>
+    				.plus-1 {
+    					background: YellowGreen;
+    					color: white;
+    				}
 
-				.plus-1 {
-					background: YellowGreen;
-					color: white;
-				}
+    				.plus-2 {
+    					background: MediumSeaGreen;
+    					color: white;
+    				}
 
-				.plus-2 {
-					background: MediumSeaGreen;
-					color: white;
-				}
+    				.plus-3 {
+    					background: DarkGreen;
+    					color: white;
+    				}
 
-				.plus-3 {
-					background: DarkGreen;
-					color: white;
-				}
+    				.minus-1 {
+    					background: Coral;
+    					color: white;
+    				}
 
-				.minus-1 {
-					background: Coral;
-					color: white;
-				}
+    				.minus-2 {
+    					background: OrangeRed;
+    					color: white;
+    				}
 
-				.minus-2 {
-					background: OrangeRed;
-					color: white;
-				}
-
-				.minus-3 {
-					background: Red;
-					color: white;
-				}
-
-
-			  </style>
-			</head>
-			<body>
-				<table>
-					<thead>${headerHtml}</thead>
-					<tbody>${rowsHtml}</tbody>
-				</table>
-			</body>
+    				.minus-3 {
+    					background: Red;
+    					color: white;
+    				}
+  			  </style>
+         </head>
+         <body>
+           <div class="container">
+             <h1 class="h2 mt-3 mb-3 text-center">${title}</h1>
+             <ul class="nav nav-tabs" id="myTab" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link active" id="scores-tab" data-toggle="tab" href="#tab-scores" role="tab" aria-controls="scores" aria-selected="true">Scores</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="3-tab" data-toggle="tab" href="#tab-2" role="tab" aria-controls="profile" aria-selected="false">Tab 2</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="3-tab" data-toggle="tab" href="#tab-3" role="tab" aria-controls="tab-3" aria-selected="false">Tab 3</a>
+              </li>
+            </ul>
+            <div class="tab-content" id="myTabContent">
+              <div class="tab-pane fade show active" id="tab-scores" role="tabpanel" aria-labelledby="scores-tab">
+                <div class="table-responsive">
+                 <table class="table table-bordered">
+                   <thead class="thead-light">${headerHtml}</thead>
+                   <tbody>${rowsHtml}</tbody>
+                 </table>
+                </div>
+              </div>
+              <div class="tab-pane fade" id="tab-2" role="tabpanel" aria-labelledby="2-tab">TAB 2</div>
+              <div class="tab-pane fade" id="tab-3" role="tabpanel" aria-labelledby="3-tab">TAB 3</div>
+            </div>
+          </div>
+         <!-- Optional JavaScript -->
+         <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+         <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+         </body>
 		</html>
 	`;
 
 	fs.writeFileSync(`${parentDirectory}/summary.html`, html);
-
 }
 
 const runTests = () => {
@@ -244,8 +283,6 @@ const runTests = () => {
 	}
 }
 
-setup();
-runTests();
+//setup();
+//runTests();
 generateSummaries();
-
-// cleanup();

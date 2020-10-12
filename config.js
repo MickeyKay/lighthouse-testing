@@ -1,6 +1,6 @@
 export default {
   url: 'https://www.nerdwallet.com/article/investing/how-to-invest-dividend-stocks',
-  runs: 1,
+  runs: 6,
   keyAudits: [
     'largest-contentful-paint',
     'total-blocking-time',
@@ -23,6 +23,12 @@ export default {
       label: 'Auth dialog',
       assetPatterns: [
         'nw-auth-dialog',
+      ]
+    },
+    {
+      label: 'Disqus',
+      assetPatterns: [
+        'comments',
       ]
     },
     {
