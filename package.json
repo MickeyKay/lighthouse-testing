@@ -15,6 +15,6 @@
     "fs": "0.0.1-security",
     "fs-extra": "^9.0.1",
     "lighthouse-batch": "^6.0.0",
-    "underscore": "^1.10.2"
+    "underscore": "^1.12.1"
   }
 }
